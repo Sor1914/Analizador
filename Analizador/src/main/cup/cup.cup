@@ -1,0 +1,140 @@
+package api;
+
+import java_cup.runtime.*;
+
+
+parser code {:
+    AnalizadorLexico s;
+
+    public parser(AnalizadorLexico s) {
+        super(s);
+        this.s = s;
+    }
+
+    public void report_error(String message, Object info) {
+        if (info instanceof Symbol sym && sym.value != null) {
+            if (!sym.value.toString().contains("ilegal")) {
+                System.err.println("Error sintactico en línea " + (sym.left + 1) +
+                                   ", columna " + (sym.right + 1) +
+                                   ": simbolo no esperado '" + sym.value + "'");
+            }
+        } else {
+            System.err.println("Error sintáctico: símbolo no reconocido o vacío.");
+        }
+    }
+
+    public void report_fatal_error(String message, Object info) {
+        report_error(message, info);
+        throw new RuntimeException("No se puede recuperar del error.");
+    }
+:};
+
+terminal FUNCTION, RETURN, END, DEFINE, PRINT,
+         IF, ELSE, ELSEIF, WHILE, LOOP,
+         TRUE, FALSE,
+         AND, OR, NOT,
+         SUMA, RESTA, MULTIPLICACION, DIVISION,
+         MENOR_IGUAL, MAYOR_IGUAL, IGUALDAD, DIFERENTE, MENOR, MAYOR,
+         ASIGNACION, PAR_IZQ, PAR_DER, COMA, PUNTOYCOMA,
+         ENTERO, FLOTANTE, CADENA, ID, ERROR, THEN, DO;
+
+non terminal programa, declaraciones, declaracion,
+             funcion, argumentos, instrucciones, instruccion,
+             definicion, retorno, print, asignacion,
+             expresion, llamadaFuncion, argumentosLlamada,
+             operador_aritmetico, ciclo_while, print_args, print_arg,
+             condicional, elseif_chain, ciclo_loop, asignacion_simple;
+
+precedence left OR;
+precedence left AND;
+precedence right NOT;
+precedence left IGUALDAD, DIFERENTE;
+precedence left MENOR, MAYOR, MENOR_IGUAL, MAYOR_IGUAL;
+precedence left SUMA, RESTA;
+precedence left MULTIPLICACION, DIVISION;
+
+start with programa;
+
+programa ::= declaraciones;
+
+declaraciones ::= declaraciones declaracion
+                | declaracion;
+
+declaracion ::= funcion
+              | definicion
+              | print
+              | asignacion
+              | condicional
+              | ciclo_loop;
+
+funcion ::= FUNCTION ID PAR_IZQ argumentos PAR_DER instrucciones END;
+
+argumentos ::= argumentos COMA ID
+             | ID
+             | /* vacío */;
+
+instrucciones ::= instrucciones instruccion
+                | instruccion;
+
+instruccion ::= retorno
+              | definicion
+              | print
+              | asignacion
+              | ciclo_while
+              | ciclo_loop
+              | condicional;
+
+ciclo_loop ::= LOOP PAR_IZQ asignacion_simple PUNTOYCOMA expresion PUNTOYCOMA asignacion_simple PAR_DER DO instrucciones END;
+
+asignacion_simple ::= ID ASIGNACION expresion;
+
+condicional ::= IF expresion THEN instrucciones elseif_chain END;
+
+elseif_chain ::= ELSE instrucciones
+               | ELSEIF expresion THEN instrucciones elseif_chain
+               | /* vacío */;
+
+ciclo_while ::= WHILE expresion DO instrucciones END;
+
+retorno ::= RETURN expresion PUNTOYCOMA;
+
+definicion ::= DEFINE ID ASIGNACION expresion PUNTOYCOMA;
+
+asignacion ::= ID ASIGNACION expresion PUNTOYCOMA;
+
+print ::= PRINT print_args PUNTOYCOMA;
+
+print_args ::= print_args COMA print_arg
+             | print_arg;
+
+print_arg ::= expresion;
+
+expresion ::= expresion operador_aritmetico expresion
+            | llamadaFuncion
+            | ID
+            | ENTERO
+            | FLOTANTE
+            | CADENA
+            | TRUE
+            | FALSE
+            | NOT expresion
+            | PAR_IZQ expresion PAR_DER;
+
+operador_aritmetico ::= SUMA
+                      | RESTA
+                      | MULTIPLICACION
+                      | DIVISION
+                      | IGUALDAD
+                      | DIFERENTE
+                      | MENOR
+                      | MAYOR
+                      | MENOR_IGUAL
+                      | MAYOR_IGUAL
+                      | AND
+                      | OR;
+
+llamadaFuncion ::= ID PAR_IZQ argumentosLlamada PAR_DER;
+
+argumentosLlamada ::= argumentosLlamada COMA expresion
+                    | expresion
+                    | /* vacío */;
